@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Habit List</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #EBE7D9;
+    --paper-dark: #DED8C4;
+    --ink: #23291F;
+    --ink-soft: #565C4E;
+    --stamp: #B23A2E;
+    --teal: #2E5561;
+    --teal-soft: #6C9099;
+    --desk: #14181A;
+    --shadow: rgba(20, 24, 26, 0.35);
+  }
+
+  *{ box-sizing: border-box; }
+
+  html, body{
+    margin: 0;
+    padding: 0;
+    background: var(--desk);
+    color: var(--ink);
+    font-family: 'IBM Plex Mono', monospace;
+    min-height: 100%;
+  }
+
+  body{
+    padding: 32px 16px 64px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .status-note{
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    color: var(--stamp);
+    background: var(--paper);
+    padding: 6px 12px;
+    border-radius: 4px;
+    display: none;
+    z-index: 20;
+    letter-spacing: 0.02em;
+  }
+  .status-note.show{ display: block; }
+
+  .sheet{
+    width: 100%;
+    max-width: 480px;
+    background: var(--paper);
+    box-shadow: 0 24px 50px var(--shadow), 0 2px 0 rgba(0,0,0,0.15);
+    padding: 30px clamp(20px, 6vw, 38px) 34px;
+  }
+
+  header{ margin-bottom: 20px; }
+
+  h1{
+    margin: 0;
+    font-size: clamp(22px, 5vw, 28px);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .tagline{
+    font-family: 'Caveat', cursive;
+    font-weight: 600;
+    color: var(--stamp);
+    font-size: 19px;
+    transform: rotate(-1deg);
+    display: inline-block;
+    margin-top: 4px;
+  }
+
+  .rule{
+    border: none;
+    border-top: 1px solid var(--ink-soft);
+    opacity: 0.35;
+    margin: 16px 0 20px;
+  }
+
+  form.add-row{
+    display: flex;
+    gap: 8px;
+    margin-bottom: 22px;
+  }
+
+  .add-row input[type="text"]{
+    flex: 1;
+    min-width: 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 15px;
+    padding: 10px 12px;
+    background: var(--paper-dark);
+    border: 1px solid var(--ink-soft);
+    color: var(--ink);
+    border-radius: 2px;
+  }
+  .add-row input[type="text"]::placeholder{ color: var(--ink-soft); opacity: 0.8; }
+
+  .add-row input[type="text"]:focus-visible,
+  button:focus-visible{
+    outline: 2px dashed var(--teal);
+    outline-offset: 2px;
+  }
+
+  .btn{
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    padding: 10px 16px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.12s ease, transform 0.12s ease;
+    white-space: nowrap;
+  }
+  .btn:hover{ background: var(--teal); }
+  .btn:active{ transform: translateY(1px); }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition: none !important; animation: none !important; }
+  }
+
+  .empty{
+    padding: 32px 10px;
+    text-align: center;
+    color: var(--ink-soft);
+    border: 1.5px dashed var(--ink-soft);
+    border-radius: 4px;
+  }
+  .empty .big{
+    font-family: 'Caveat', cursive;
+    font-size: 24px;
+    color: var(--stamp);
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  ul.items{
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  li.item{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 4px;
+    border-bottom: 1px solid rgba(35,41,31,0.15);
+  }
+
+  .check{
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border: 2px solid var(--ink-soft);
+    border-radius: 4px;
+    background: var(--paper-dark);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: transparent;
+    font-size: 16px;
+    font-weight: 700;
+    transition: transform 0.1s ease;
+  }
+  .check:hover{ border-color: var(--ink); }
+  .check:active{ transform: scale(0.9); }
+  .check.done{
+    background: var(--stamp);
+    border-color: var(--stamp);
+    color: var(--paper);
+  }
+
+  .item-text{
+    flex: 1;
+    min-width: 0;
+    font-size: 15px;
+    word-break: break-word;
+  }
+  .item-text.done{
+    color: var(--ink-soft);
+    text-decoration: line-through;
+    text-decoration-color: var(--ink-soft);
+  }
+
+  .del-btn{
+    flex-shrink: 0;
+    background: none;
+    border: 1px solid var(--ink-soft);
+    color: var(--ink-soft);
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    padding: 5px 8px;
+    border-radius: 2px;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+  }
+  .del-btn:hover{ border-color: var(--stamp); color: var(--stamp); }
+  .del-btn.confirming{
+    background: var(--stamp);
+    border-color: var(--stamp);
+    color: var(--paper);
+  }
+
+  footer{
+    margin-top: 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--ink-soft);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .reset-link{
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    text-decoration: underline;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 4px;
+  }
+  .reset-link:hover{ color: var(--stamp); }
+  .reset-link.confirming{ color: var(--stamp); font-weight: 700; }
+
+  .loading{
+    color: var(--ink-soft);
+    font-size: 14px;
+    padding: 40px 0;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="status-note" id="statusNote" role="status" aria-live="polite"></div>
+
+<div class="sheet">
+  <header>
+    <h1>Habit List</h1>
+    <span class="tagline">add it, do it, tick it off</span>
+  </header>
+
+  <hr class="rule">
+
+  <form class="add-row" id="addForm">
+    <input type="text" id="itemInput" placeholder="add a habit, e.g. Drink water" maxlength="80" autocomplete="off">
+    <button type="submit" class="btn">Add</button>
+  </form>
+
+  <div id="listArea">
+    <div class="loading">loading&hellip;</div>
+  </div>
+
+  <footer>
+    <span id="countLabel"></span>
+    <button class="reset-link" id="resetBtn" type="button">clear all</button>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'checklist:items';
+  let items = [];
+  let nextId = 1;
+
+  async function loadItems(){
+    try{
+      const res = await window.storage.get(STORAGE_KEY, false);
+      if (res && res.value){
+        items = JSON.parse(res.value);
+        nextId = items.reduce((max, it) => Math.max(max, it.id), 0) + 1;
+      } else {
+        items = [];
+      }
+    }catch(err){
+      items = [];
+    }
+  }
+
+  async function saveItems(){
+    try{
+      const res = await window.storage.set(STORAGE_KEY, JSON.stringify(items), false);
+      if (!res) note('Could not save — changes may not persist.');
+    }catch(err){
+      note('Could not save — changes may not persist.');
+    }
+  }
+
+  let noteTimer = null;
+  function note(msg){
+    const el = document.getElementById('statusNote');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(() => el.classList.remove('show'), 2200);
+  }
+
+  function render(){
+    const listArea = document.getElementById('listArea');
+    listArea.innerHTML = '';
+
+    const doneCount = items.filter(it => it.done).length;
+    document.getElementById('countLabel').textContent =
+      items.length ? `${doneCount} of ${items.length} done` : '';
+
+    if (items.length === 0){
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.innerHTML = '<span class="big">nothing here yet</span>add a habit above to get started';
+      listArea.appendChild(empty);
+      return;
+    }
+
+    const ul = document.createElement('ul');
+    ul.className = 'items';
+
+    items.forEach(item => {
+      const li = document.createElement('li');
+      li.className = 'item';
+
+      const checkBtn = document.createElement('button');
+      checkBtn.type = 'button';
+      checkBtn.className = 'check' + (item.done ? ' done' : '');
+      checkBtn.textContent = '\u2713';
+      checkBtn.setAttribute('aria-label', `Mark "${item.text}" as ${item.done ? 'not done' : 'done'}`);
+      checkBtn.addEventListener('click', () => toggleDone(item.id));
+
+      const textEl = document.createElement('span');
+      textEl.className = 'item-text' + (item.done ? ' done' : '');
+      textEl.textContent = item.text;
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'del-btn';
+      delBtn.textContent = 'remove';
+      delBtn.setAttribute('aria-label', `Remove "${item.text}"`);
+      attachConfirmingDelete(delBtn, item.id, item.text);
+
+      li.appendChild(checkBtn);
+      li.appendChild(textEl);
+      li.appendChild(delBtn);
+      ul.appendChild(li);
+    });
+
+    listArea.appendChild(ul);
+  }
+
+  function attachConfirmingDelete(btn, id, text){
+    let confirming = false;
+    let resetTimer = null;
+    btn.addEventListener('click', () => {
+      if (!confirming){
+        confirming = true;
+        btn.textContent = 'sure?';
+        btn.classList.add('confirming');
+        resetTimer = setTimeout(() => {
+          confirming = false;
+          btn.textContent = 'remove';
+          btn.classList.remove('confirming');
+        }, 2500);
+      } else {
+        clearTimeout(resetTimer);
+        removeItem(id, text);
+      }
+    });
+  }
+
+  async function addItem(rawText){
+    const text = rawText.trim();
+    if (!text) return;
+    items.push({ id: nextId++, text, done: false });
+    render();
+    await saveItems();
+    note(`Added "${text}".`);
+  }
+
+  async function toggleDone(id){
+    const item = items.find(it => it.id === id);
+    if (!item) return;
+    item.done = !item.done;
+    render();
+    await saveItems();
+  }
+
+  async function removeItem(id, text){
+    items = items.filter(it => it.id !== id);
+    render();
+    await saveItems();
+    note(`Removed "${text}".`);
+  }
+
+  let resetConfirming = false;
+  let resetTimer2 = null;
+  document.getElementById('resetBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('resetBtn');
+    if (!resetConfirming){
+      resetConfirming = true;
+      btn.textContent = 'click again to clear everything';
+      btn.classList.add('confirming');
+      resetTimer2 = setTimeout(() => {
+        resetConfirming = false;
+        btn.textContent = 'clear all';
+        btn.classList.remove('confirming');
+      }, 3000);
+      return;
+    }
+    clearTimeout(resetTimer2);
+    resetConfirming = false;
+    btn.textContent = 'clear all';
+    btn.classList.remove('confirming');
+    items = [];
+    render();
+    await saveItems();
+    note('Cleared.');
+  });
+
+  document.getElementById('addForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('itemInput');
+    await addItem(input.value);
+    input.value = '';
+    input.focus();
+  });
+
+  (async function init(){
+    await loadItems();
+    render();
+  })();
+})();
+</script>
+</body>
+</html>
